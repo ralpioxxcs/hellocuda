@@ -34,12 +34,11 @@ __global__ void gpuAdd(int *d_a, int *d_b, int *d_c) {
 }
 ```
 
-
-|  |   |  |  |   |
-|---------|----------|----------|----------|---|
-| BLOCK 1 | Thread 0 | Thread 1 | Thread 2 |   |
-| BLOCK 2 | Thread 0 | Thread 1 | Thread 2 |   |
-| BLOCK 3 | Thread 0 | Thread 1 | Thread 2 |   |
+|         |          |          |          |
+|---------|----------|----------|----------|
+| Block 1 | Thread 0 | Thread 1 | Thread 2 |
+| Block 2 | Thread 0 | Thread 1 | Thread 2 |
+| Block 3 | Thread 0 | Thread 1 | Thread 2 |
 
 3개의 Block과 각 block당 3개의 Thread를 갖는 연산이 있다고 하자  
 각 tid(task ID)값은 `tid = threadId.x + blockIdx.x * blockDim.x`을 통해서 계산되어진다. 여기서 `blockDim.x`은 block당 thread의 갯수를 나타낸다. 위와 같이 계산하면 고유한 tid값들을 가질 수 있게된다.  
@@ -112,8 +111,28 @@ int main(int argc, int **argv) {
 실제로 thread가 실행되고 그 연산 결과를 다른 thread로 전달하지 않는경우는 거의 없다. 이런 각 thread끼리의 연산결과를 공유하기위해 **shared memory**라는것이 있다. 많은 thread가 병렬로 수행되고 동일한 memory 위치에서 읽기와 쓰기 연산을 할떄 모든 thread끼리는 동기화작업이 필수적이어야한다.
 
 ### Shraed memory  
+Shared memory의 latency는 cache되지않은 global memory의 latency보다 대략 100배정도 낮다. 같은 block내의 모든 thread는 shared memory에 접근할 수 있다. shared memory를 통해 서로 다른 thread끼리 결과를 공유하는것은 많은 application에서 유용하지만, 동기화(synchronization) 작업이 제대로 이루어져야만 올바른 결과를 얻을 수 있다. 이러한 동기화 작업은 memory에 대한 모든 write연산이 프로그램의 첫번째로 수행되도록 하는 `__syncthreads()`을 통해 이루어진다. 이것을 **barrier**라고 부르며, 다른 thread들이 작업을 마칠때까지 특정 line에서 기다리는 것을 뜻한다.  
 
-### Atomic operations  
+```cpp
+#include <stdio.h>
+__global__ void gpu_shared_memory(float *d_a) {
+    int i, index = threadIdx.x;
+    float average, sum = 0.0f;
+    __shared__ float sh_arr[10];
+    sh_arr[index] = d_a[index];
+
+    __syncthreads();
+    for(i = 0; i<= index; i++) {
+        sum += sh_arr[i];
+    }
+    average = sum / (index + 1.0f);
+    d_a[index] = average;
+    sh_arr[index] = average; // redundant (no effect)
+}
+```
+위의 kernel function을 보면 shared memory를 read 하기 전, `__syncthreads()` barrier를 통해 write 연산을 마무리할수 있도록 해준다. 그리고 for loop에서 각 average를 계산하고 현재 thread ID에의해 indexed된 global memory로 저장한다. 또한 shared memory의 lifetime은 block 단위이므로 block execution이 마무리되고 난 후인 마지막 라인은 무의미하다. shared memory는 `__shared__`를 사용한다. 위의 예제에는 10개의 float array를 정의하였다. 일반적으로 shared memory의 사이즈는 block당 thread의 갯수와 동일하게 하는것이 좋다. 
+
+### Atomic operations
 
 ### Constant memory  
 
