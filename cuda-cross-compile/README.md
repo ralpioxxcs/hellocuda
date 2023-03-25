@@ -1,5 +1,5 @@
 # CUDA Cross-Compiling
-* cuda version: 10.2
+* Version: 10.2
 
 ## Prerequisite
 * CUDA Toolkit 10.2
@@ -30,3 +30,8 @@ make
 ```sh
 nvcc -arch=sm_50 -ccbin=aarch64-linux-gnu-g++-7 -I/usr/local/cuda/include -L/usr/local/cuda/targets/aarch64-linux-gnu main.cu -o main
 ```
+
+## References
+* https://medium.com/trueface-ai/how-to-cross-compile-opencv-and-mxnet-for-nvidia-jetson-aarch64-cuda-99d467958bce
+* https://docs.nvidia.com/jetson/jetpack/install-jetpack/index.html#jetpack-debian-packages
+* https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
